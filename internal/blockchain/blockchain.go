@@ -5,7 +5,9 @@ import (
 	"MyCoinApp/internal/pool"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"os"
+	"sync"
 )
 
 type Blockchain struct {
@@ -16,6 +18,7 @@ type Blockchain struct {
 	Balances map[string]float64 `json:"balances"`
 
 	StakingPool *consensus.StakingPool `json:"staking_pool"`
+	mutex       sync.RWMutex           `json:"-"`
 }
 
 func NewBlockchain() *Blockchain {
@@ -68,4 +71,23 @@ func (bc *Blockchain) LoadFromFile() error {
 	}
 
 	return json.Unmarshal(data, bc)
+}
+
+func (bc *Blockchain) AddBalance(address string, amount float64) {
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
+	bc.Balances[address] += amount
+	log.Printf("Balance of %s updated to %.2f", address, bc.Balances[address])
+	bc.SaveToFile()
+}
+
+func (bc *Blockchain) GetBalance(address string) float64 {
+	bc.mutex.RLock()
+	defer bc.mutex.RUnlock()
+	// Tìm balance trong map
+	balance, exists := bc.Balances[address]
+	if !exists {
+		return 0.0
+	}
+	return balance
 }
