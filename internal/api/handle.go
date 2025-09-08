@@ -179,20 +179,38 @@ func (s *Server) mineBlock(c *gin.Context) {
 	log.Println("=== CREATE BLOCK REQUEST ===")
 
 	var request struct {
-		MinerAddress string `json:"miner_address"`
+		MinerAddress string `json:"miner_address"` // ❌ User chooses who mines!
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Printf("Error decoding request: %v", err)
+		log.Printf("Failed to decode request body: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	log.Printf("Block creation requested by: %s", request.MinerAddress)
-	log.Printf("Consensus type: POS")
-	log.Printf("Pending transactions: %d", len(s.blockchain.PendingTransactions))
-	log.Printf("Active validators: %d", len(s.blockchain.StakingPool.Validators))
-
+	// No user input - system selects validator
+	selectedValidator, err := s.blockchain.StakingPool.SelectValidator()
+	if selectedValidator == "" {
+		log.Printf("Failed to select validator: %v", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Không có validator nào khả dụng để tạo block. Vui lòng stake coin để trở thành validator.",
+		})
+		return
+	}
+	if err != nil {
+		log.Printf("Failed to select validator: %v", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Không có validator nào khả dụng để tạo block. Vui lòng stake coin để trở thành validator.",
+		})
+		return
+	}
+	if selectedValidator != request.MinerAddress {
+		log.Printf("Mining denied for address: %s (selected: %s)", request.MinerAddress, selectedValidator)
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Bạn không phải validator được chọn để tạo block!!",
+		})
+		return
+	}
 	if len(s.blockchain.PendingTransactions) == 0 {
 		log.Println("No pending transactions - will create block with reward transaction only")
 	}
@@ -202,14 +220,14 @@ func (s *Server) mineBlock(c *gin.Context) {
 	// Add timeout protection
 	done := make(chan *blockchain.Block, 1)
 	go func() {
-		block := s.blockchain.MinePendingTransactions(request.MinerAddress)
+		block := s.blockchain.MinePendingTransactions(selectedValidator)
 		done <- block
 	}()
 
 	select {
 	case block := <-done:
 		if block == nil {
-			log.Printf("Mining denied for address: %s", request.MinerAddress)
+			log.Printf("Mining denied for address: %s", selectedValidator)
 			c.JSON(http.StatusForbidden, gin.H{
 				"error": "Bạn không phải validator",
 			})
@@ -220,7 +238,7 @@ func (s *Server) mineBlock(c *gin.Context) {
 		log.Printf("- Hash: %s", block.Hash)
 		log.Printf("- Index: %d", block.Index)
 		log.Printf("- Transactions: %d", len(block.Transactions))
-		log.Printf("- Reward recipient: %s", request.MinerAddress)
+		log.Printf("- Reward recipient: %s", selectedValidator)
 
 		c.JSON(http.StatusOK, gin.H{
 			"status":     "success",

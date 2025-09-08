@@ -13,6 +13,7 @@ class MyCoinApp {
     init() {
         this.setupTabNavigation();
         this.setupSendFormListeners();
+        this.initializeFormDefaults();
         this.loadWalletFromStorage();
         this.loadDashboard();
         this.startAutoRefresh();
@@ -57,6 +58,21 @@ class MyCoinApp {
         importRadios.forEach(radio => {
             radio.addEventListener('change', () => this.toggleImportFields());
         });
+    }
+
+    initializeFormDefaults() {
+        // Set default values from CONFIG
+        const sendFeeElement = document.getElementById('send-fee');
+        if (sendFeeElement && !sendFeeElement.value) {
+            sendFeeElement.value = CONFIG.DEFAULT_FEE;
+        }
+
+        // Set placeholder values that reference CONFIG
+        const stakeAmountElement = document.getElementById('stake-amount');
+        if (stakeAmountElement) {
+            stakeAmountElement.placeholder = `Tối thiểu ${CONFIG.MIN_STAKE} MYC`;
+            stakeAmountElement.min = CONFIG.MIN_STAKE;
+        }
     }
     
     toggleImportFields() {
@@ -385,7 +401,7 @@ class MyCoinApp {
         const from = document.getElementById('send-from-address').value.trim();
         const to = document.getElementById('send-to-address').value.trim();
         const amount = parseFloat(document.getElementById('send-amount').value);
-        const fee = parseFloat(document.getElementById('send-fee').value) || 0.01;
+        const fee = parseFloat(document.getElementById('send-fee').value) || CONFIG.DEFAULT_FEE;
 
         if (!from || !to || !amount || amount <= 0) {
             Utils.showToast(CONFIG.ERRORS.SEND_TRANSACTION_REQUIRED, 'error');
@@ -411,7 +427,7 @@ class MyCoinApp {
             // Clear form
             document.getElementById('send-to-address').value = '';
             document.getElementById('send-amount').value = '';
-            document.getElementById('send-fee').value = '0.01';
+            document.getElementById('send-fee').value = CONFIG.DEFAULT_FEE;
             this.updateTransactionPreview();
             
             this.loadWalletBalance();
@@ -425,7 +441,7 @@ class MyCoinApp {
 
     updateTransactionPreview() {
         const amount = parseFloat(document.getElementById('send-amount').value) || 0;
-        const fee = parseFloat(document.getElementById('send-fee').value) || 0.01;
+        const fee = parseFloat(document.getElementById('send-fee').value) || CONFIG.DEFAULT_FEE;
         const total = amount + fee;
 
         const updateElement = (id, content) => {
@@ -780,6 +796,11 @@ class MyCoinApp {
             return;
         }
 
+        if (amount < CONFIG.MIN_STAKE) {
+            Utils.showToast(`Số lượng stake tối thiểu là ${CONFIG.MIN_STAKE} MYC`, 'error');
+            return;
+        }
+
         if (!this.currentWallet) {
             Utils.showToast(CONFIG.ERRORS.NO_WALLET, 'error');
             return;
@@ -865,18 +886,18 @@ class MyCoinApp {
     // Wallet storage functionality
     saveWalletToStorage() {
         if (this.currentWallet) {
-            localStorage.setItem('mycoin_wallet', JSON.stringify(this.currentWallet));
+            localStorage.setItem(CONFIG.STORAGE_KEYS.CURRENT_WALLET, JSON.stringify(this.currentWallet));
         }
     }
 
     loadWalletFromStorage() {
-        const stored = localStorage.getItem('mycoin_wallet');
+        const stored = localStorage.getItem(CONFIG.STORAGE_KEYS.CURRENT_WALLET);
         if (stored) {
             try {
                 this.currentWallet = JSON.parse(stored);
             } catch (error) {
                 console.error('Error loading wallet from storage:', error);
-                localStorage.removeItem('mycoin_wallet');
+                localStorage.removeItem(CONFIG.STORAGE_KEYS.CURRENT_WALLET);
             }
         }
     }

@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 )
 
 type Blockchain struct {
@@ -193,61 +194,52 @@ func (bc *Blockchain) MinePendingTransactions(miningRewardAddress string) *Block
 }
 
 func (bc *Blockchain) createPoS(proposedValidator string) (*Block, error) {
-	// Bootstrap mode: Nếu chưa có validator nào, cho phép bất kỳ ai tạo block
-	if len(bc.StakingPool.Validators) == 0 {
-		log.Println("Bootstrap mode: No validators found, allowing anyone to create block")
-		selectedValidator := proposedValidator
+	log.Printf("=== PoS Block Creation Started ===")
+	log.Printf("Proposed validator: %s", proposedValidator)
+	log.Printf("Current validators count: %d", len(bc.StakingPool.Validators))
+	log.Printf("Pending transactions: %d", len(bc.PendingTransactions))
 
-		// Reduced reward for PoS (50 MYC instead of 100)
-		rewardAmount := bc.StakingPool.BlockReward
-		log.Printf("Creating reward transaction: %s -> %.2f MYC", selectedValidator, rewardAmount)
-		rewardTransaction := pool.NewTransaction("", selectedValidator, rewardAmount, 0)
-		bc.PendingTransactions = append(bc.PendingTransactions, rewardTransaction)
-
-		log.Printf("Total transactions for block: %d", len(bc.PendingTransactions))
-
-		// Create block without validator requirements (bootstrap mode)
-		previousHash := "0"
-		if len(bc.Chain) > 0 {
-			// Direct access since we already have the lock
-			latestBlock := bc.Chain[len(bc.Chain)-1]
-			if latestBlock != nil {
-				previousHash = latestBlock.Hash
-			}
-		}
-
-		blockNumber := int64(len(bc.Chain))
-		log.Printf("Creating PoS block #%d with previous hash: %s", blockNumber, previousHash)
-		block := NewBlock(bc.PendingTransactions, previousHash, selectedValidator, blockNumber)
-		log.Printf("PoS block #%d created with hash: %s", blockNumber, block.Hash)
-
-		log.Printf("Block created, adding to chain...")
-		bc.Chain = append(bc.Chain, block)
-
-		log.Printf("Updating balances...")
-		bc.UpdateBalances(block)
-
-		bc.PendingTransactions = []*pool.Transaction{}
-
-		log.Printf("Saving blockchain to file...")
-		bc.SaveToFile()
-
-		log.Printf("Bootstrap block creation completed!")
-		return block, nil
-	}
-
-	// Kiểm tra proposedValidator có phải là validator hợp lệ không
-	_, err := bc.StakingPool.GetValidatorInfo(proposedValidator)
+	// Strict PoS: Always require valid validator
+	validator, err := bc.StakingPool.GetValidatorInfo(proposedValidator)
 	if err != nil {
-		log.Printf("Mining denied: address %s is not an active validator", proposedValidator)
-		return nil, fmt.Errorf("mining denied: address %s is not an active validator", proposedValidator)
+		log.Printf("ERROR: Validator not found: %s", proposedValidator)
+		return nil, fmt.Errorf("address %s is not a registered validator. Please stake coins first", proposedValidator)
 	}
 
+	// Check if validator is active
+	if !validator.IsActive {
+		log.Printf("ERROR: Validator inactive: %s", proposedValidator)
+		return nil, fmt.Errorf("validator %s is inactive (slashed too many times)", proposedValidator)
+	}
+
+	// Check minimum stake requirement
+	if validator.StakedAmount < bc.StakingPool.MinStakeAmount {
+		log.Printf("ERROR: Insufficient stake: %.2f < %.2f", validator.StakedAmount, bc.StakingPool.MinStakeAmount)
+		return nil, fmt.Errorf("validator %s has insufficient stake: %.2f MYC (minimum: %.2f MYC)",
+			proposedValidator, validator.StakedAmount, bc.StakingPool.MinStakeAmount)
+	}
+
+	// Check cooldown period (prevent monopoly)
+	currentTime := time.Now().Unix()
+	if (currentTime - validator.LastBlockTime) < 60 { // 60 seconds cooldown
+		log.Printf("ERROR: Validator in cooldown: %s", proposedValidator)
+		return nil, fmt.Errorf("validator %s must wait %d seconds before creating another block",
+			proposedValidator, 60-(currentTime-validator.LastBlockTime))
+	}
+
+	// Validator is valid - proceed with block creation
+	log.Printf("✓ Validator validation passed")
 	selectedValidator := proposedValidator
+
+	// Create reward transaction
 	rewardAmount := bc.StakingPool.BlockReward
+	log.Printf("Creating reward transaction: %s -> %.2f MYC", selectedValidator, rewardAmount)
 	rewardTransaction := pool.NewTransaction("", selectedValidator, rewardAmount, 0)
 	bc.PendingTransactions = append(bc.PendingTransactions, rewardTransaction)
 
+	log.Printf("Total transactions for block: %d", len(bc.PendingTransactions))
+
+	// Get previous block hash
 	previousHash := "0"
 	if len(bc.Chain) > 0 {
 		latestBlock := bc.Chain[len(bc.Chain)-1]
@@ -255,16 +247,48 @@ func (bc *Blockchain) createPoS(proposedValidator string) (*Block, error) {
 			previousHash = latestBlock.Hash
 		}
 	}
+
+	// Create new block
 	blockNumber := int64(len(bc.Chain))
+	log.Printf("Creating PoS block #%d with previous hash: %s", blockNumber, previousHash)
 	block := NewBlock(bc.PendingTransactions, previousHash, selectedValidator, blockNumber)
+	log.Printf("✓ PoS block #%d created with hash: %s", blockNumber, block.Hash)
+
+	// Add block to chain
+	log.Printf("Adding block to chain...")
 	bc.Chain = append(bc.Chain, block)
 
+	// Update balances
+	log.Printf("Updating balances...")
 	bc.UpdateBalances(block)
 
-	bc.StakingPool.RewardValidator(selectedValidator, rewardAmount)
+	// Reward validator and update their stats
+	log.Printf("Rewarding validator...")
+	err = bc.StakingPool.RewardValidator(selectedValidator, rewardAmount)
+	if err != nil {
+		log.Printf("WARNING: Failed to reward validator: %v", err)
+		// Continue anyway - block is already created
+	}
 
+	// Clear pending transactions
 	bc.PendingTransactions = []*pool.Transaction{}
-	bc.SaveToFile()
+
+	// Save blockchain state
+	log.Printf("Saving blockchain to file...")
+	err = bc.SaveToFile()
+	if err != nil {
+		log.Printf("WARNING: Failed to save blockchain: %v", err)
+		// Continue anyway - block is in memory
+	}
+
+	log.Printf("✓ PoS block creation completed successfully!")
+	log.Printf("=== Block Stats ===")
+	log.Printf("- Block Index: %d", block.Index)
+	log.Printf("- Block Hash: %s", block.Hash)
+	log.Printf("- Transactions: %d", len(block.Transactions))
+	log.Printf("- Validator: %s", selectedValidator)
+	log.Printf("- Reward: %.2f MYC", rewardAmount)
+	log.Printf("==================")
 
 	return block, nil
 }

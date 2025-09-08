@@ -12,9 +12,9 @@ const CONFIG = {
     TOAST_DURATION: 5000, // 5 seconds
     
     // Blockchain Configuration
-    MINING_REWARD: 10.0,
-    INITIAL_WALLET_BALANCE: 1000.0,
-    MIN_STAKE: 100.0,
+    MINING_REWARD: 5.0,
+    INITIAL_WALLET_BALANCE: 100.0,
+    MIN_STAKE: 10.0,
     
     // Transaction Configuration
     DEFAULT_FEE: 0.01,
