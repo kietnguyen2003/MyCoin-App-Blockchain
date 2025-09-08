@@ -2,8 +2,10 @@ package blockchain
 
 import (
 	"MyCoinApp/internal/consensus"
+	"MyCoinApp/internal/models"
 	"MyCoinApp/internal/pool"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -44,7 +46,7 @@ func (bc *Blockchain) CreateGenesisBlock() {
 		Index:        0,
 		Timestamp:    1609459200,
 		Transactions: []*pool.Transaction{},
-		PrevHash:     "0",
+		PreviousHash: "0",
 		Hash:         "0",
 	}
 	bc.Chain = append(bc.Chain, genesisBlock)
@@ -90,4 +92,84 @@ func (bc *Blockchain) GetBalance(address string) float64 {
 		return 0.0
 	}
 	return balance
+}
+
+func (bc *Blockchain) IsChainValid() bool {
+	bc.mutex.RLock()
+	defer bc.mutex.RUnlock()
+
+	for i := 1; i < len(bc.Chain); i++ {
+		currentBlock := bc.Chain[i]
+		previousBlock := bc.Chain[i-1]
+
+		if currentBlock.Hash != currentBlock.CalculateHash() {
+			return false
+		}
+
+		if currentBlock.PreviousHash != previousBlock.Hash {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (bc *Blockchain) GetLatestBlock() *Block {
+	bc.mutex.RLock()
+	defer bc.mutex.RUnlock()
+
+	if len(bc.Chain) == 0 {
+		return nil
+	}
+	return bc.Chain[len(bc.Chain)-1]
+}
+
+func (bc *Blockchain) GetValidators() []*consensus.Validator {
+	bc.mutex.RLock()
+	defer bc.mutex.RUnlock()
+
+	return bc.StakingPool.GetAllValidators()
+}
+
+func (bc *Blockchain) GetTransactionHistoryWithBlocks(address string) []*models.TransactionWithBlock {
+	bc.mutex.RLock()
+	defer bc.mutex.RUnlock()
+
+	var transactions []*models.TransactionWithBlock
+
+	for _, block := range bc.Chain {
+		for _, tx := range block.Transactions {
+			if tx.From == address || tx.To == address {
+				txWithBlock := &models.TransactionWithBlock{
+					Transaction: tx,
+					BlockIndex:  block.Index,
+					BlockHash:   block.Hash,
+				}
+				transactions = append(transactions, txWithBlock)
+			}
+		}
+	}
+
+	return transactions
+}
+
+func (bc *Blockchain) AddTransaction(transaction *pool.Transaction) error {
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
+
+	if transaction.From != "genesis" && transaction.From != "" {
+		// Lấy balance hiện tại của người gửi
+		balance, exists := bc.Balances[transaction.From]
+		if !exists { // Nếu chưa có trong map
+			balance = 0.0 // Đặt balance = 0
+		}
+		// Kiểm tra đủ tiền (gồm cả amount + fee)
+		if balance < transaction.Amount+transaction.Fee {
+			return fmt.Errorf("insufficient balance") // Lỗi: Không đủ tiền
+		}
+	}
+
+	// Thêm transaction vào pending pool
+	bc.PendingTransactions = append(bc.PendingTransactions, transaction)
+	return nil // Thành công
 }

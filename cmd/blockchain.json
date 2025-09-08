@@ -1,0 +1,27 @@
+{
+  "chain": [
+    {
+      "index": 0,
+      "timestamp": 1609459200,
+      "transactions": [],
+      "previous_hash": "0",
+      "hash": "0"
+    }
+  ],
+  "pending_transactions": [],
+  "mining_reward": 50,
+  "balances": {
+    "003d952d8e3490fd92c1302bb8b344105a6cb1a053776a4678": 100,
+    "00958b1793892fa8e2216a4ffe25b6c64a95a5e35a910ef058": 100,
+    "00b61f9049ec8f694a3de97920a139eb0cbedd9c681ef0ecb0": 100,
+    "genesis": 1000000
+  },
+  "staking_pool": {
+    "validators": {},
+    "min_stake_amount": 100,
+    "max_validators": 100,
+    "slashing_penalty": 10,
+    "block_reward": 50,
+    "staking_reward": 5
+  }
+}
