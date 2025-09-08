@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -57,7 +58,7 @@ func (s *Server) Start() error {
 
 		blockChainApi := api.Group("/blockchain")
 		{
-			// blockChainApi.POST("/mine", s.mineBlock)
+			blockChainApi.POST("/mine", s.mineBlock)
 			blockChainApi.GET("/info", s.getBlockchainInfo)
 			// blockChainApi.GET("/blocks", s.getAllBlocks)
 			// blockChainApi.GET("/block/:index", s.getBlock)
@@ -65,11 +66,11 @@ func (s *Server) Start() error {
 
 		stakingApi := api.Group("/staking")
 		{
-			// stakingApi.POST("/stake", s.stakeCoins)
-			// stakingApi.POST("/unstake", s.unstakeCoins)
+			stakingApi.POST("/stake", s.stakeCoins)
+			stakingApi.POST("/unstake", s.unstakeCoins)
 			stakingApi.GET("/validators", s.getValidators)
-			// stakingApi.GET("/validator/:address", s.getValidatorInfo)
-			// stakingApi.GET("/info", s.getStakingInfo)
+			stakingApi.GET("/validator/:address", s.getValidatorInfo)
+			stakingApi.GET("/info", s.getStakingInfo)
 		}
 
 		transactionApi := api.Group("/transaction")
@@ -174,13 +175,188 @@ func (s *Server) getBlockchainInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, info)
 }
 
-// Stacking handlers
+func (s *Server) mineBlock(c *gin.Context) {
+	log.Println("=== CREATE BLOCK REQUEST ===")
+
+	var request struct {
+		MinerAddress string `json:"miner_address"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Printf("Error decoding request: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	log.Printf("Block creation requested by: %s", request.MinerAddress)
+	log.Printf("Consensus type: POS")
+	log.Printf("Pending transactions: %d", len(s.blockchain.PendingTransactions))
+	log.Printf("Active validators: %d", len(s.blockchain.StakingPool.Validators))
+
+	if len(s.blockchain.PendingTransactions) == 0 {
+		log.Println("No pending transactions - will create block with reward transaction only")
+	}
+
+	log.Println("Creating block...")
+
+	// Add timeout protection
+	done := make(chan *blockchain.Block, 1)
+	go func() {
+		block := s.blockchain.MinePendingTransactions(request.MinerAddress)
+		done <- block
+	}()
+
+	select {
+	case block := <-done:
+		if block == nil {
+			log.Printf("Mining denied for address: %s", request.MinerAddress)
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Bạn không phải validator",
+			})
+			return
+		}
+
+		log.Printf("Block created successfully!")
+		log.Printf("- Hash: %s", block.Hash)
+		log.Printf("- Index: %d", block.Index)
+		log.Printf("- Transactions: %d", len(block.Transactions))
+		log.Printf("- Reward recipient: %s", request.MinerAddress)
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":     "success",
+			"block_hash": block.Hash,
+			"block":      block,
+		})
+		return
+
+	case <-time.After(10 * time.Second):
+		log.Println("Block creation timeout!")
+		c.JSON(http.StatusRequestTimeout, gin.H{"error": "Block creation timeout"})
+		return
+	}
+}
+
+// Staking handlers
 func (s *Server) getValidators(c *gin.Context) {
 	validators := s.blockchain.GetValidators()
 
 	c.JSON(http.StatusOK, gin.H{
 		"validators": validators,
 		"count":      len(validators),
+	})
+}
+
+func (s *Server) stakeCoins(c *gin.Context) {
+	log.Println("=== STAKE COINS REQUEST ===")
+	var request struct {
+		Address    string  `json:"address"`
+		Amount     float64 `json:"amount"`
+		PrivateKey string  `json:"private_key"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Printf("Failed to decode request body: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	log.Printf("Stake request - Address: %s, Amount: %.2f", request.Address, request.Amount)
+
+	// Verify private key matches address
+	log.Printf("Loading wallet from private key...")
+	userWallet, err := wallet.LoadWalletFromPrivateKey(request.PrivateKey)
+	if err != nil {
+		log.Printf("Invalid private key error: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid private key"})
+		return
+	}
+	log.Printf("Wallet loaded successfully. Address: %s", userWallet.Address)
+
+	if userWallet.Address != request.Address {
+		log.Printf("Address mismatch: wallet=%s, request=%s", userWallet.Address, request.Address)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Private key does not match address"})
+		return
+	}
+	log.Printf("Address verification passed")
+
+	// Stake coins
+	log.Printf("Starting stake operation...")
+	err = s.blockchain.StakeCoins(request.Address, request.Amount)
+	if err != nil {
+		log.Printf("Stake operation failed: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	log.Printf("Stake operation completed successfully")
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": fmt.Sprintf("Successfully staked %.2f MYC", request.Amount),
+		"address": request.Address,
+		"amount":  request.Amount,
+	})
+}
+
+func (s *Server) getStakingInfo(c *gin.Context) {
+	info := s.blockchain.GetStakingInfo()
+
+	c.JSON(http.StatusOK, info)
+}
+
+func (s *Server) getValidatorInfo(c *gin.Context) {
+	address := c.Param("address")
+
+	validator, err := s.blockchain.GetValidatorInfo(address)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Validator not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, validator)
+}
+
+func (s *Server) unstakeCoins(c *gin.Context) {
+	var request struct {
+		Address    string `json:"address"`
+		PrivateKey string `json:"private_key"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// Verify private key matches address
+	userWallet, err := wallet.LoadWalletFromPrivateKey(request.PrivateKey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid private key"})
+		return
+	}
+
+	if userWallet.Address != request.Address {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Private key does not match address"})
+		return
+	}
+
+	// Get validator info first
+	validator, err := s.blockchain.GetValidatorInfo(request.Address)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Validator not found"})
+		return
+	}
+
+	// Unstake coins
+	err = s.blockchain.UnstakeCoins(request.Address)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": fmt.Sprintf("Successfully unstaked %.2f MYC", validator.StakedAmount),
+		"address": request.Address,
+		"amount":  validator.StakedAmount,
 	})
 }
 

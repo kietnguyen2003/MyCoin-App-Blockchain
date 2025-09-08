@@ -173,3 +173,182 @@ func (bc *Blockchain) AddTransaction(transaction *pool.Transaction) error {
 	bc.PendingTransactions = append(bc.PendingTransactions, transaction)
 	return nil // Thành công
 }
+
+func (bc *Blockchain) MinePendingTransactions(miningRewardAddress string) *Block {
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
+
+	// Log thông tin debug
+	log.Printf("MinePendingTransactions called with address: %s", miningRewardAddress)
+	log.Printf("Consensus type: POS")
+
+	// Tạo PoS block với validator được đề xuất
+	block, err := bc.createPoS(miningRewardAddress)
+	if err != nil {
+		log.Printf("Error creating PoS block: %v", err)
+		return nil
+	}
+	return block // Trả về block đã tạo thành công
+
+}
+
+func (bc *Blockchain) createPoS(proposedValidator string) (*Block, error) {
+	// Bootstrap mode: Nếu chưa có validator nào, cho phép bất kỳ ai tạo block
+	if len(bc.StakingPool.Validators) == 0 {
+		log.Println("Bootstrap mode: No validators found, allowing anyone to create block")
+		selectedValidator := proposedValidator
+
+		// Reduced reward for PoS (50 MYC instead of 100)
+		rewardAmount := bc.StakingPool.BlockReward
+		log.Printf("Creating reward transaction: %s -> %.2f MYC", selectedValidator, rewardAmount)
+		rewardTransaction := pool.NewTransaction("", selectedValidator, rewardAmount, 0)
+		bc.PendingTransactions = append(bc.PendingTransactions, rewardTransaction)
+
+		log.Printf("Total transactions for block: %d", len(bc.PendingTransactions))
+
+		// Create block without validator requirements (bootstrap mode)
+		previousHash := "0"
+		if len(bc.Chain) > 0 {
+			// Direct access since we already have the lock
+			latestBlock := bc.Chain[len(bc.Chain)-1]
+			if latestBlock != nil {
+				previousHash = latestBlock.Hash
+			}
+		}
+
+		blockNumber := int64(len(bc.Chain))
+		log.Printf("Creating PoS block #%d with previous hash: %s", blockNumber, previousHash)
+		block := NewBlock(bc.PendingTransactions, previousHash, selectedValidator, blockNumber)
+		log.Printf("PoS block #%d created with hash: %s", blockNumber, block.Hash)
+
+		log.Printf("Block created, adding to chain...")
+		bc.Chain = append(bc.Chain, block)
+
+		log.Printf("Updating balances...")
+		bc.UpdateBalances(block)
+
+		bc.PendingTransactions = []*pool.Transaction{}
+
+		log.Printf("Saving blockchain to file...")
+		bc.SaveToFile()
+
+		log.Printf("Bootstrap block creation completed!")
+		return block, nil
+	}
+
+	// Kiểm tra proposedValidator có phải là validator hợp lệ không
+	_, err := bc.StakingPool.GetValidatorInfo(proposedValidator)
+	if err != nil {
+		log.Printf("Mining denied: address %s is not an active validator", proposedValidator)
+		return nil, fmt.Errorf("mining denied: address %s is not an active validator", proposedValidator)
+	}
+
+	selectedValidator := proposedValidator
+	rewardAmount := bc.StakingPool.BlockReward
+	rewardTransaction := pool.NewTransaction("", selectedValidator, rewardAmount, 0)
+	bc.PendingTransactions = append(bc.PendingTransactions, rewardTransaction)
+
+	previousHash := "0"
+	if len(bc.Chain) > 0 {
+		latestBlock := bc.Chain[len(bc.Chain)-1]
+		if latestBlock != nil {
+			previousHash = latestBlock.Hash
+		}
+	}
+	blockNumber := int64(len(bc.Chain))
+	block := NewBlock(bc.PendingTransactions, previousHash, selectedValidator, blockNumber)
+	bc.Chain = append(bc.Chain, block)
+
+	bc.UpdateBalances(block)
+
+	bc.StakingPool.RewardValidator(selectedValidator, rewardAmount)
+
+	bc.PendingTransactions = []*pool.Transaction{}
+	bc.SaveToFile()
+
+	return block, nil
+}
+
+func (bc *Blockchain) UpdateBalances(block *Block) {
+	for _, tx := range block.Transactions {
+		if tx.From != "" && tx.From != "genesis" {
+			bc.Balances[tx.From] -= (tx.Amount + tx.Fee)
+		}
+		if tx.To != "" {
+			bc.Balances[tx.To] += tx.Amount
+		}
+	}
+}
+
+func (bc *Blockchain) StakeCoins(address string, amount float64) error {
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
+
+	// Check if user has enough balance (direct access to avoid mutex deadlock)
+	balance, exists := bc.Balances[address]
+	if !exists {
+		balance = 0.0
+	}
+	if balance < amount {
+		return fmt.Errorf("insufficient balance for staking")
+	}
+
+	// Deduct staked amount from balance
+	bc.Balances[address] -= amount
+
+	// Add validator to staking pool
+	err := bc.StakingPool.AddValidator(address, amount)
+	if err != nil {
+		// Refund if failed
+		bc.Balances[address] += amount
+		return err
+	}
+
+	bc.SaveToFile()
+	return nil
+}
+
+func (bc *Blockchain) GetStakingInfo() map[string]interface{} {
+	bc.mutex.RLock()
+	defer bc.mutex.RUnlock()
+
+	return map[string]interface{}{
+		"total_staked":      bc.StakingPool.GetTotalStaked(),
+		"min_stake_amount":  bc.StakingPool.MinStakeAmount,
+		"max_validators":    bc.StakingPool.MaxValidators,
+		"active_validators": len(bc.StakingPool.Validators),
+		"block_reward":      bc.StakingPool.BlockReward,
+		"staking_reward":    bc.StakingPool.StakingReward,
+		"slashing_penalty":  bc.StakingPool.SlashingPenalty,
+	}
+}
+
+func (bc *Blockchain) GetValidatorInfo(address string) (*consensus.Validator, error) {
+	bc.mutex.RLock()
+	defer bc.mutex.RUnlock()
+
+	return bc.StakingPool.GetValidatorInfo(address)
+}
+
+func (bc *Blockchain) UnstakeCoins(address string) error {
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
+
+	validator, err := bc.StakingPool.GetValidatorInfo(address)
+	if err != nil {
+		return err
+	}
+
+	// Return staked coins to balance
+	bc.Balances[address] += validator.StakedAmount
+
+	// Remove validator
+	err = bc.StakingPool.RemoveValidator(address)
+	if err != nil {
+		bc.Balances[address] -= validator.StakedAmount // Revert
+		return err
+	}
+
+	bc.SaveToFile()
+	return nil
+}

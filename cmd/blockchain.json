@@ -6,22 +6,83 @@
       "transactions": [],
       "previous_hash": "0",
       "hash": "0"
+    },
+    {
+      "index": 1,
+      "timestamp": 1757313288,
+      "transactions": [
+        {
+          "from": "0097db21490f39ce0e30529f129f3e8c7da41434d14d8e2410",
+          "to": "00b5e964e0d8f4ee26a2673c9031f4a9bdcfa4ba2d1e31a59f",
+          "amount": 20,
+          "fee": 0.01,
+          "timestamp": 1757313262,
+          "hash": "0a64f6d42166b353a0337f471339322c20d473d8b8beb3b00a92410a22572e1f",
+          "signature": ""
+        },
+        {
+          "from": "",
+          "to": "00b5e964e0d8f4ee26a2673c9031f4a9bdcfa4ba2d1e31a59f",
+          "amount": 5,
+          "fee": 0,
+          "timestamp": 1757313288,
+          "hash": "bdc6708ec322bafeda4f51580305b0f795b5eeb91b32729d843c3d8f03310849",
+          "signature": ""
+        }
+      ],
+      "previous_hash": "0",
+      "hash": "b22ae2d04cf4d1abbf03fa797fb98d4320a7640d0ec3732b9cfaa0ed0d5e2ae4"
+    },
+    {
+      "index": 2,
+      "timestamp": 1757313843,
+      "transactions": [
+        {
+          "from": "00b5e964e0d8f4ee26a2673c9031f4a9bdcfa4ba2d1e31a59f",
+          "to": "0097db21490f39ce0e30529f129f3e8c7da41434d14d8e2410",
+          "amount": 5,
+          "fee": 0.01,
+          "timestamp": 1757313823,
+          "hash": "437ca27d761fc744469047e87a02da0f3f62d8139485ff80cc8c6b52c80debbb",
+          "signature": ""
+        },
+        {
+          "from": "",
+          "to": "00b5e964e0d8f4ee26a2673c9031f4a9bdcfa4ba2d1e31a59f",
+          "amount": 5,
+          "fee": 0,
+          "timestamp": 1757313843,
+          "hash": "9f702484cf5999382304cfe00a256026333c50b5af371067b27b09e43bc894ca",
+          "signature": ""
+        }
+      ],
+      "previous_hash": "b22ae2d04cf4d1abbf03fa797fb98d4320a7640d0ec3732b9cfaa0ed0d5e2ae4",
+      "hash": "005bac332014ab46e33fa029d373812b669c08f7313b698d87ec6b02bdc98f82"
     }
   ],
   "pending_transactions": [],
   "mining_reward": 50,
   "balances": {
-    "003d952d8e3490fd92c1302bb8b344105a6cb1a053776a4678": 100,
-    "00958b1793892fa8e2216a4ffe25b6c64a95a5e35a910ef058": 100,
-    "00b61f9049ec8f694a3de97920a139eb0cbedd9c681ef0ecb0": 100,
+    "0097db21490f39ce0e30529f129f3e8c7da41434d14d8e2410": 84.99,
+    "00b5e964e0d8f4ee26a2673c9031f4a9bdcfa4ba2d1e31a59f": 74.99,
     "genesis": 1000000
   },
   "staking_pool": {
-    "validators": {},
-    "min_stake_amount": 100,
+    "validators": {
+      "00b5e964e0d8f4ee26a2673c9031f4a9bdcfa4ba2d1e31a59f": {
+        "address": "00b5e964e0d8f4ee26a2673c9031f4a9bdcfa4ba2d1e31a59f",
+        "staked_amount": 50,
+        "last_block_time": 1757313843,
+        "slash_count": 0,
+        "is_active": true,
+        "join_time": 1757313244,
+        "total_rewards": 10
+      }
+    },
+    "min_stake_amount": 10,
     "max_validators": 100,
     "slashing_penalty": 10,
-    "block_reward": 50,
+    "block_reward": 5,
     "staking_reward": 5
   }
 }

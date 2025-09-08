@@ -30,11 +30,11 @@ type StakingPool struct {
 func NewStakingPool() *StakingPool {
 	return &StakingPool{
 		Validators:      make(map[string]*Validator),
-		MinStakeAmount:  100.0, // Minimum 100 MYC to become validator
-		MaxValidators:   100,   // Maximum 100 validators
-		SlashingPenalty: 10.0,  // 10% penalty for malicious behavior
-		BlockReward:     50.0,  // 50 MYC reward for block creator
-		StakingReward:   5.0,   // 5% annual staking reward
+		MinStakeAmount:  10.0, // Minimum 10 MYC to become validator
+		MaxValidators:   100,  // Maximum 100 validators
+		SlashingPenalty: 10.0, // 10% penalty for malicious behavior
+		BlockReward:     5.0,  // 50 MYC reward for block creator
+		StakingReward:   5.0,  // 5% annual staking reward
 	}
 }
 

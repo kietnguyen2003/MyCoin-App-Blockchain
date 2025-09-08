@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="app">
         <!-- Navigation -->
@@ -61,7 +63,7 @@
                         Làm mới
                     </button>
                 </div>
-                
+
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-icon wallet">
@@ -135,7 +137,7 @@
                 <div class="page-header">
                     <h1>Quản lý Ví (Wallet)</h1>
                 </div>
-                
+
                 <div class="wallet-section">
                     <div class="wallet-actions">
                         <button class="action-btn primary" onclick="showCreateWallet()">
@@ -207,7 +209,8 @@
                                 <div class="detail-content">
                                     <div class="copy-field">
                                         <input type="text" id="wallet-address" readonly class="address-input">
-                                        <button onclick="copyToClipboard('wallet-address')" class="copy-btn" title="Copy địa chỉ">
+                                        <button onclick="copyToClipboard('wallet-address')" class="copy-btn"
+                                            title="Copy địa chỉ">
                                             <i class="fas fa-copy"></i>
                                         </button>
                                     </div>
@@ -222,7 +225,8 @@
                                 <div class="detail-content">
                                     <div class="copy-field">
                                         <input type="text" id="wallet-public-key" readonly class="key-input">
-                                        <button onclick="copyToClipboard('wallet-public-key')" class="copy-btn" title="Copy public key">
+                                        <button onclick="copyToClipboard('wallet-public-key')" class="copy-btn"
+                                            title="Copy public key">
                                             <i class="fas fa-copy"></i>
                                         </button>
                                     </div>
@@ -238,10 +242,12 @@
                                 <div class="detail-content">
                                     <div class="copy-field">
                                         <input type="password" id="wallet-private-key" readonly class="key-input">
-                                        <button onclick="togglePasswordVisibility('wallet-private-key')" class="toggle-btn" title="Hiện/Ẩn private key">
+                                        <button onclick="togglePasswordVisibility('wallet-private-key')"
+                                            class="toggle-btn" title="Hiện/Ẩn private key">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button onclick="copyToClipboard('wallet-private-key')" class="copy-btn" title="Copy private key">
+                                        <button onclick="copyToClipboard('wallet-private-key')" class="copy-btn"
+                                            title="Copy private key">
                                             <i class="fas fa-copy"></i>
                                         </button>
                                     </div>
@@ -257,10 +263,12 @@
                                 <div class="detail-content">
                                     <div class="copy-field">
                                         <input type="password" id="wallet-passphrase" readonly class="key-input">
-                                        <button onclick="togglePasswordVisibility('wallet-passphrase')" class="toggle-btn" title="Hiện/Ẩn passphrase">
+                                        <button onclick="togglePasswordVisibility('wallet-passphrase')"
+                                            class="toggle-btn" title="Hiện/Ẩn passphrase">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button onclick="copyToClipboard('wallet-passphrase')" class="copy-btn" title="Copy passphrase">
+                                        <button onclick="copyToClipboard('wallet-passphrase')" class="copy-btn"
+                                            title="Copy passphrase">
                                             <i class="fas fa-copy"></i>
                                         </button>
                                     </div>
@@ -275,7 +283,8 @@
                             <div class="security-content">
                                 <h4>Lưu ý bảo mật quan trọng</h4>
                                 <ul>
-                                    <li><strong>Private Key</strong> và <strong>Passphrase</strong> là thông tin tuyệt đối bí mật</li>
+                                    <li><strong>Private Key</strong> và <strong>Passphrase</strong> là thông tin tuyệt
+                                        đối bí mật</li>
                                     <li>Không bao giờ chia sẻ thông tin này với bất kỳ ai</li>
                                     <li>Lưu trữ an toàn và tạo bản sao lưu ở nơi khác</li>
                                     <li>Mất private key = mất toàn bộ tài sản trong ví</li>
@@ -302,7 +311,7 @@
                 <div class="page-header">
                     <h1>Gửi MyCoin</h1>
                 </div>
-                
+
                 <div class="send-section">
                     <div class="send-form">
                         <div class="form-group">
@@ -330,7 +339,7 @@
                             Gửi giao dịch
                         </button>
                     </div>
-                    
+
                     <div class="transaction-preview">
                         <h3>Xem trước giao dịch</h3>
                         <div class="preview-item">
@@ -361,7 +370,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="history-section">
                     <div class="history-stats">
                         <div class="stat-item">
@@ -377,7 +386,7 @@
                             <span id="total-received">0.00 MYC</span>
                         </div>
                     </div>
-                    
+
                     <div class="transaction-table">
                         <table id="transaction-history-table">
                             <thead>
@@ -397,17 +406,19 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <div class="pagination-controls" id="pagination-controls" style="display: none;">
                         <div class="pagination-info">
-                            <span>Hiển thị <span id="showing-from">1</span>-<span id="showing-to">4</span> trong <span id="total-transactions-count">0</span> giao dịch</span>
+                            <span>Hiển thị <span id="showing-from">1</span>-<span id="showing-to">4</span> trong <span
+                                    id="total-transactions-count">0</span> giao dịch</span>
                         </div>
                         <div class="pagination-buttons">
                             <button class="action-btn secondary" id="prev-page" onclick="changePage(-1)" disabled>
                                 <i class="fas fa-chevron-left"></i>
                                 Trước
                             </button>
-                            <span class="page-info">Trang <span id="current-page">1</span> / <span id="total-pages">1</span></span>
+                            <span class="page-info">Trang <span id="current-page">1</span> / <span
+                                    id="total-pages">1</span></span>
                             <button class="action-btn secondary" id="next-page" onclick="changePage(1)">
                                 Tiếp
                                 <i class="fas fa-chevron-right"></i>
@@ -422,7 +433,7 @@
                 <div class="page-header">
                     <h1>Mining & Consensus</h1>
                 </div>
-                
+
                 <div class="mining-section">
                     <div class="consensus-info">
                         <h3>Thông tin Consensus</h3>
@@ -445,10 +456,11 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="mining-controls">
                         <div class="mining-info">
-                            <h4><i class="fas fa-robot"></i> Auto-Mining: <span class="status-good">Hoạt động</span></h4>
+                            <h4><i class="fas fa-robot"></i> Auto-Mining: <span class="status-good">Hoạt động</span>
+                            </h4>
                             <p>Hệ thống tự động tạo khối mỗi 15 giây khi có giao dịch chờ xử lý</p>
                         </div>
                         <div class="form-group">
@@ -460,7 +472,7 @@
                             Tạo khối thủ công
                         </button>
                     </div>
-                    
+
                     <div class="mining-stats">
                         <h3>Thống kê Mining</h3>
                         <div class="stat-grid">
@@ -482,18 +494,18 @@
                 <div class="page-header">
                     <h1>Staking MyCoin</h1>
                 </div>
-                
+
                 <div class="staking-section">
                     <div class="staking-info">
                         <h3>Thông tin Staking</h3>
                         <div class="info-grid">
                             <div class="info-item">
                                 <span>Minimum Stake:</span>
-                                <span id="min-stake">100.00 MYC</span>
+                                <span id="min-stake">10.00 MYC</span>
                             </div>
                             <div class="info-item">
                                 <span>Reward Rate:</span>
-                                <span id="reward-rate">10%</span>
+                                <span id="reward-rate">5</span>
                             </div>
                             <div class="info-item">
                                 <span>Max Validators:</span>
@@ -501,7 +513,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="staking-controls">
                         <div class="staking-form">
                             <h3>Stake Coins</h3>
@@ -522,7 +534,7 @@
                                 Stake Coins
                             </button>
                         </div>
-                        
+
                         <div class="unstaking-form">
                             <h3>Unstake Coins</h3>
                             <div class="form-group">
@@ -539,7 +551,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="validators-list">
                         <h3>Danh sách Validators</h3>
                         <div class="validators-table">
@@ -579,4 +591,5 @@
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>
