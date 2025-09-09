@@ -6,6 +6,12 @@
 
 **MyCoin** là một nền tảng tiền điện tử blockchain hoàn chỉnh được xây dựng bằng Go và JavaScript, sử dụng thuật toán **Proof of Stake (PoS)** để đảm bảo tính bảo mật và hiệu quả năng lượng.
 
+## 🎥 Demo Video
+
+[![MyCoin Demo](https://img.shields.io/badge/▶️_Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/mhMUAl8nbY8)
+
+**Xem demo hoạt động:** [https://youtu.be/mhMUAl8nbY8](https://youtu.be/mhMUAl8nbY8)
+
 ## 📋 Mục lục
 
 - [🌟 Tính năng chính](#-tính-năng-chính)
